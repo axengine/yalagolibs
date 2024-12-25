@@ -1,0 +1,52 @@
+module github.com/yalaorg/golibs
+
+go 1.23.0
+
+require (
+	github.com/axengine/utils v0.0.0-20230824122405-91aa13ad2294
+	github.com/axengine/utils/log v0.0.0-20230824122405-91aa13ad2294
+	github.com/btcsuite/btcd v0.24.2
+	github.com/btcsuite/btcd/btcec/v2 v2.3.4
+	github.com/btcsuite/btcd/btcutil v1.1.6
+	github.com/btcsuite/btcd/btcutil/psbt v1.1.9
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
+	github.com/ethereum/go-ethereum v1.14.11
+	github.com/go-resty/resty/v2 v2.15.3
+	github.com/pkg/errors v0.9.2-0.20201214064552-5dd12d0cfe7f
+	go.etcd.io/etcd/client/v3 v3.5.12
+	go.mongodb.org/mongo-driver/v2 v2.0.0-beta2
+	go.uber.org/zap v1.24.0
+)
+
+require (
+	github.com/btcsuite/btclog v0.0.0-20241017175713-3428138b75c7 // indirect
+	github.com/coreos/go-semver v0.3.0 // indirect
+	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/decred/dcrd/crypto/blake256 v1.1.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
+	github.com/holiman/uint256 v1.3.1 // indirect
+	github.com/klauspost/compress v1.17.2 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.12 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.12 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
+	golang.org/x/sync v0.9.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240314234333-6e1732d8331c // indirect
+	google.golang.org/grpc v1.62.1 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+)
