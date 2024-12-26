@@ -56,7 +56,7 @@ func TestCreateIndex(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	ret, err := _mgocli_.InsertOne(context.TODO(), _testCollection_, &user{
-		Uid:  2,
+		Uid:  8,
 		Name: "李2四",
 		Age:  18,
 	})

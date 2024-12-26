@@ -89,15 +89,19 @@ func (mc *MgoCli) Count(ctx context.Context, collection string, filter interface
 	return mc.client.Database(mc.database).Collection(collection, opts).CountDocuments(ctx, filter)
 }
 
-// InsertOne
-func (mc *MgoCli) InsertOne(ctx context.Context, collection string, document interface{}) (bool, error) {
+// InsertOne insert one document,return the inserted id
+func (mc *MgoCli) InsertOne(ctx context.Context, collection string, document interface{}) (*bson.ObjectID, error) {
 	rlt, err := mc.client.Database(mc.database).
 		Collection(collection).
 		InsertOne(ctx, document)
-	if err != nil || !rlt.Acknowledged {
-		return false, err
+	if err != nil {
+		return nil, err
 	}
-	return true, err
+	if rlt.Acknowledged {
+		id := rlt.InsertedID.(bson.ObjectID)
+		return &id, err
+	}
+	return nil, errors.New("insert was not acknowledged")
 }
 
 func (mc *MgoCli) MustInsertOne(ctx context.Context, collection string, document interface{}) error {
@@ -113,7 +117,25 @@ func (mc *MgoCli) MustInsertOne(ctx context.Context, collection string, document
 	return nil
 }
 
-func (mc *MgoCli) InsertMany(ctx context.Context, collection string, documents interface{}) (int, error) {
+func (mc *MgoCli) InsertMany(ctx context.Context, collection string, documents interface{}) ([]*bson.ObjectID, error) {
+	rlt, err := mc.client.Database(mc.database).
+		Collection(collection).
+		InsertMany(ctx, documents)
+	if err != nil {
+		return nil, err
+	}
+	if rlt.Acknowledged {
+		var ids []*bson.ObjectID
+		for _, v := range rlt.InsertedIDs {
+			id := v.(bson.ObjectID)
+			ids = append(ids, &id)
+		}
+		return ids, err
+	}
+	return nil, errors.New("insert was not acknowledged")
+}
+
+func (mc *MgoCli) MustInsertMany(ctx context.Context, collection string, documents interface{}) (int, error) {
 	rlt, err := mc.client.Database(mc.database).
 		Collection(collection).
 		InsertMany(ctx, documents)
@@ -135,7 +157,7 @@ func (mc *MgoCli) MustUpdateById(ctx context.Context, collection string, id bson
 	return nil
 }
 
-// The number of updated documents can be 0 for UpdateById
+// UpdateById The number of updated documents can be 0 for UpdateById
 func (mc *MgoCli) UpdateById(ctx context.Context, collection string, id bson.ObjectID, update bson.D) error {
 	_, err := mc.updateById(ctx, collection, id, update)
 	return err
