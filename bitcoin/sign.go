@@ -5,12 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 )
 
-func SignBitcoinMessage(sk *btcec.PrivateKey, msg []byte) []byte {
+func encodeMessage(msg []byte) []byte {
 	var buf bytes.Buffer
 	magicStr := "Bitcoin Signed Message:\n"
 	buf.WriteByte(byte(len(magicStr)))
@@ -23,10 +28,36 @@ func SignBitcoinMessage(sk *btcec.PrivateKey, msg []byte) []byte {
 
 	buf.Write(bz)
 	buf.Write(msg)
+	return buf.Bytes()
+}
 
-	hash := _sha256(_sha256(buf.Bytes()))
-
+func SignMessage(sk *btcec.PrivateKey, msg []byte) []byte {
+	bz := encodeMessage(msg)
+	hash := _sha256(_sha256(bz))
 	return ecdsa.SignCompact(sk, hash, true)
+}
+
+func VerifyMessage(msg []byte, signature []byte, address string, network *chaincfg.Params) (*btcec.PublicKey, error) {
+	bz := encodeMessage(msg)
+	hash := _sha256(_sha256(bz))
+	pk, ok, err := ecdsa.RecoverCompact(signature, hash)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New("recover compact failed")
+	}
+
+	pubKey := txscript.ComputeTaprootKeyNoScript(pk)
+	witnessProg := schnorr.SerializePubKey(pubKey)
+	tapAddr, err := btcutil.NewAddressTaproot(witnessProg, network)
+	if err != nil {
+		return pk, err
+	}
+	if tapAddr.EncodeAddress() != address {
+		return pk, fmt.Errorf("recover address %s is not equal %s", tapAddr.EncodeAddress(), address)
+	}
+	return pk, nil
 }
 
 func _sha256(bz []byte) []byte {
