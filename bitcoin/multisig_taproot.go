@@ -40,9 +40,7 @@ func NewMultisigTaprootScript(pks []string, m, n int, network *chaincfg.Params) 
 	}
 	var leafPubkeys [][]byte
 	for _, v := range pks {
-		if strings.HasPrefix(v, "0x") {
-			v = v[2:]
-		}
+		v = strings.TrimPrefix(v, "0x")
 		if bz, err := hex.DecodeString(v); err != nil {
 			return nil, err
 		} else {

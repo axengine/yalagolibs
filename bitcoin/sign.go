@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -71,7 +72,7 @@ const MAX_SAFE_INTEGER = 9007199254740991
 
 // checkUInt53 checks if the number is a valid unsigned 53-bit integer.
 func checkUInt53(n int64) error {
-	if n < 0 || n > MAX_SAFE_INTEGER || n != n {
+	if n < 0 || n > MAX_SAFE_INTEGER {
 		return errors.New("value out of range")
 	}
 	return nil

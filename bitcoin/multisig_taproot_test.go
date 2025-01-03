@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/yalaorg/golibs/cubist"
 	"math/big"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/yalaorg/golibs/cubist"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -100,7 +101,7 @@ func TestGenTapscript(t *testing.T) {
 		t.Fatal(err)
 	}
 	packet.Inputs[0].TaprootLeafScript = []*psbt.TaprootTapLeafScript{
-		&psbt.TaprootTapLeafScript{
+		{
 			ControlBlock: tapscript.controlBlock,
 			Script:       tapscript.leafScript,
 			LeafVersion:  0xc0,

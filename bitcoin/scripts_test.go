@@ -194,7 +194,7 @@ func TestBuildAndSignTx(t *testing.T) {
 	ns, _ := NewNotaryBridgeScript(common.Bytes2Hex(key.PrivKey.PubKey().SerializeCompressed()), "testnet", NewMempool(URL_MEMPOOL))
 	t.Log(ns.P2WSHAddress())
 
-	utxoOpt := WithUTXOS([]UTXO{UTXO{
+	utxoOpt := WithUTXOS([]UTXO{{
 		Txid:  "b13393a9c2e9cfdbefb9f02211e9b7c7562da3817592fab1f04bc9049be58e9f",
 		Vout:  1,
 		Value: 697606,

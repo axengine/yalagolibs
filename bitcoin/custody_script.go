@@ -3,8 +3,9 @@ package bitcoinlib
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"strings"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -41,9 +42,7 @@ func NewCustodyScript(pks []string, pkAdmin string, m, n int, locktime uint32, n
 		builder.AddOp(byte(txscript.OP_RESERVED + m))
 
 		for _, v := range pks {
-			if strings.HasPrefix(v, "0x") {
-				v = v[2:]
-			}
+			v = strings.TrimPrefix(v, "0x")
 			bz, err := hex.DecodeString(v)
 			if err != nil {
 				return nil, err
@@ -62,9 +61,7 @@ func NewCustodyScript(pks []string, pkAdmin string, m, n int, locktime uint32, n
 	}
 	builder.AddOp(txscript.OP_ENDIF)
 	// admin
-	if strings.HasPrefix(pkAdmin, "0x") {
-		pkAdmin = pkAdmin[2:]
-	}
+	pkAdmin = strings.TrimPrefix(pkAdmin, "0x")
 	bz, err := hex.DecodeString(pkAdmin)
 	if err != nil {
 		return nil, err

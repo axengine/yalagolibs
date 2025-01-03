@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
@@ -15,9 +19,6 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/yalaorg/golibs/cubist"
-	"strings"
-	"testing"
-	"time"
 )
 
 func createScript() *CustodyScript {
@@ -284,9 +285,7 @@ func TestClaimFromScriptx(t *testing.T) {
 	}
 
 	hexdecode := func(str string) []byte {
-		if strings.HasPrefix(str, "0x") {
-			str = str[2:]
-		}
+		str = strings.TrimPrefix(str, "0x")
 		b, _ := hex.DecodeString(str)
 		r := &secp256k1.ModNScalar{}
 		r.SetByteSlice(b[:32])
