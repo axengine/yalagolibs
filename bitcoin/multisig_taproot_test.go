@@ -125,7 +125,7 @@ func TestGenTapscript(t *testing.T) {
 	t.Log("before sign:", psbtHex)
 
 	// sign
-	cu := cubist.New()
+	cu := cubist.New(true)
 	signedPsbtHex, err := cu.PsbtSign(context.Background(), signpks[1], psbtHex, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -213,4 +213,17 @@ func TestGenTapscript(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestTxSize(t *testing.T) {
+	pks := []string{
+		"be7c61b415dcf3117992b2c7941293db04f1723fea9a216d4427ee3d54d21d32",
+		"c81b336d1fdef81309eb4b6b9e073d9b70638cc76700cdb5276cd1078800ef0d",
+		"f84a799e9873f9a8c19cd34007bc4c2173e48be882f3a50c949210903e314a4e"}
+	tapscript, err := NewMultisigTaprootScript(pks, 2, 3, &chaincfg.TestNet3Params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(tapscript.LeafScript()))
+	t.Log(tapscript.TxSize(2, 2))
 }

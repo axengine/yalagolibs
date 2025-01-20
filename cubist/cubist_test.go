@@ -25,7 +25,7 @@ import (
 var _cli_ *Cubist
 
 func TestMain(m *testing.M) {
-	_cli_ = New()
+	_cli_ = New(true)
 	os.Exit(m.Run())
 }
 

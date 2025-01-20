@@ -64,16 +64,14 @@ func CalculateP2WSHVSizeV2(inputCount, outputCount int, mOfMusig, nOfMusig int, 
 		}
 		for j := 0; j < mOfMusig; j++ { // The public key of the signatureublic key of the signature
 			witnesssizePerInput += 1 // witness buf len
-			if j%2 == 0 {
-				witnesssizePerInput += 71 // There are 71 and 72 here fake random
-			} else {
-				witnesssizePerInput += 72 // There are 71 and 72
-			}
-
+			witnesssizePerInput += 64
 		}
 
 		witnesssizePerInput += 1 // witness buf len, assuming scriptLen《=255
 		witnesssizePerInput += scriptLen
+
+		witnesssizePerInput += 1 // script pk
+		witnesssizePerInput += 33
 
 		witnesssize += witnesssizePerInput
 	}

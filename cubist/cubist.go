@@ -19,10 +19,13 @@ const Tips = `
 `
 
 type Cubist struct {
+	debug bool
 }
 
-func New() *Cubist {
-	return &Cubist{}
+func New(debug bool) *Cubist {
+	return &Cubist{
+		debug: debug,
+	}
 }
 
 func (c *Cubist) Init() error {
@@ -195,7 +198,7 @@ type Output struct {
 }
 
 type BitcoinTx struct {
-	Version  int      `json:"version"`
+	Version  int32    `json:"version"`
 	Locktime uint32   `json:"lock_time"`
 	Input    []Input  `json:"input"`
 	Output   []Output `json:"output"`
@@ -354,11 +357,17 @@ func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 	ro := make(map[string]interface{})
 	ro["purpose"] = "auto sign"
 	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip191", "sign:evm:eip712"}
-	ro["auth_lifetime"] = 300
-	ro["refresh_lifetime"] = 86400
-	ro["session_lifetime"] = 31536000 // 1year
-	ro["grace_lifetime"] = 30
-
+	if c.debug {
+		ro["auth_lifetime"] = 300         // 5mins
+		ro["refresh_lifetime"] = 86400    // 1day
+		ro["session_lifetime"] = 31536000 // 1year
+		ro["grace_lifetime"] = 30         // 30s
+	} else {
+		ro["auth_lifetime"] = 300       // 5mins
+		ro["refresh_lifetime"] = 86400  // 1day
+		ro["session_lifetime"] = 604800 // 7days
+		ro["grace_lifetime"] = 30       // 30s
+	}
 	rsp, err := r.SetBody(ro).SetHeader("Content-Type", "application/json").Post(uri)
 	if err != nil {
 		return nil, err

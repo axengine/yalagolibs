@@ -191,7 +191,7 @@ func TestBuildAndSignTx(t *testing.T) {
 
 	t.Log(common.Bytes2Hex(key.PrivKey.PubKey().SerializeCompressed()))
 
-	ns, _ := NewNotaryBridgeScript(common.Bytes2Hex(key.PrivKey.PubKey().SerializeCompressed()), "testnet", NewMempool(URL_MEMPOOL))
+	ns, _ := NewNotaryBridgeScript(common.Bytes2Hex(key.PrivKey.PubKey().SerializeCompressed()), "testnet", NewSmartClient([]string{URL_MEMPOOL}))
 	t.Log(ns.P2WSHAddress())
 
 	utxoOpt := WithUTXOS([]UTXO{{

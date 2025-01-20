@@ -163,3 +163,59 @@ func (ms *MultisigTaprootScript) LeafScript() []byte {
 func (ms *MultisigTaprootScript) TapleafHash() []byte {
 	return ms.tapleafHash
 }
+
+func (ms *MultisigTaprootScript) TxSize(input, output int) int {
+	var basesize int
+	basesize += 4 // version
+
+	basesize += 1 // input count assumes inputCount<=255
+	for i := 0; i < input; i++ {
+		inputsize := 32 + 4 // outpoint(hash+index)
+		inputsize += 1      // len SignatureScript
+		inputsize += 0      // SignatureScript
+		inputsize += 4      // sequence
+		basesize += inputsize
+	}
+
+	basesize += 1 // output count assumes outputCount<=255
+	for i := 0; i < output; i++ {
+		outputsize := 8  // value
+		outputsize += 1  // pk len
+		outputsize += 34 // pk assumes that pk length is 34
+		basesize += outputsize
+	}
+
+	basesize += 4 // nlocktime
+
+	witnesssize := 0
+	witnesssize += 2 // flag
+	for i := 0; i < input; i++ {
+		witnesssizePerInput := 0
+		witnesssizePerInput += 1 // witness len, assuming nOfMusig<=255
+
+		for j := 0; j < ms.n-ms.m; j++ { // There is no signed public key
+			witnesssizePerInput += 1 // witness buf len
+			witnesssizePerInput += 0
+		}
+		for j := 0; j < ms.m; j++ { // The public key of the signatureublic key of the signature
+			witnesssizePerInput += 1  // witness buf len
+			witnesssizePerInput += 64 // signature
+		}
+
+		witnesssizePerInput += 1 // witness buf len, assuming scriptLen《=255
+		witnesssizePerInput += len(ms.leafScript)
+
+		witnesssizePerInput += 1 // script pk
+		witnesssizePerInput += 33
+
+		witnesssize += witnesssizePerInput
+	}
+
+	// doc：https://bitcoin.stackexchange.com/questions/114375/how to accurately calculate the vsize of a transaction
+	totalsize := basesize + witnesssize
+
+	//fmt.Println("basesize=", basesize, "witnesssize=", witnesssize)
+	weight := 3*basesize + totalsize // vsize = basesize + (totalsize-basesize)/4
+	vsize := (weight + 4 - 1) / 4    // Not so precise
+	return vsize
+}

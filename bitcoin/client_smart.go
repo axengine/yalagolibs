@@ -122,6 +122,40 @@ func (m *SmartClient) GetTipHeight(ctx context.Context) (int64, error) {
 	return strconv.ParseInt(body, 10, 64)
 }
 
+func (m *SmartClient) BlockHash(ctx context.Context, height int64) (string, error) {
+	body, err := m.get(ctx, "/block-height/"+fmt.Sprintf("%d", height), "", "", nil)
+	if err != nil {
+		return "", err
+	}
+	return body, nil
+}
+
+func (m *SmartClient) BlockTxs(ctx context.Context, blockHash string, index int) ([]Transaction, error) {
+	url := fmt.Sprintf("/block/%s/txs/%d", blockHash, index)
+	var txs []Transaction
+	for _, cli := range m.clients {
+		r := cli.R().SetContext(ctx)
+		r.SetResult(&txs)
+		rsp, err := r.Get(url)
+		if err != nil {
+			m.addError(cli.BaseURL)
+			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.Error(err))
+			continue
+		}
+		if rsp.IsError() && rsp.StatusCode() != 404 {
+			m.addError(cli.BaseURL)
+			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.String("status", rsp.Status()), zap.String("response", rsp.String()))
+			continue
+		}
+		// When index out of range
+		if rsp.StatusCode() == 404 {
+			return nil, nil
+		}
+		return txs, nil
+	}
+	return nil, errors.New("no api available")
+}
+
 // getFeeRecommended To get the referral rate, only mempool has this interface
 func (m *SmartClient) getFeeRecommended(ctx context.Context) (int64, error) {
 	var feeRsp struct {
@@ -234,6 +268,15 @@ func (m *SmartClient) GetTransaction(ctx context.Context, txid string) (*Transac
 		return tx, nil
 	}
 	return nil, errors.New("no api available")
+}
+
+func (m *SmartClient) GetAddress(ctx context.Context, address string) (*AddressStats, error) {
+	var addressStats = new(AddressStats)
+	_, err := m.get(ctx, "/address/"+address, "", ContentTypeJson, addressStats)
+	if err != nil {
+		return nil, err
+	}
+	return addressStats, nil
 }
 
 func (m *SmartClient) GetAddressTransactions(ctx context.Context, address string) ([]Transaction, error) {
