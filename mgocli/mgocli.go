@@ -35,6 +35,10 @@ func (mc *MgoCli) Ping() error {
 	return mc.client.Ping(ctx, readpref.Primary())
 }
 
+func (mc *MgoCli) Client() *mongo.Client {
+	return mc.client
+}
+
 // CreateCollection if database not exist,it will create it
 func (mc *MgoCli) CreateCollection(ctx context.Context, collection string) error {
 	return mc.client.Database(mc.database).CreateCollection(ctx, collection)
