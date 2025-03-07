@@ -66,6 +66,8 @@ func (mc *MgoCli) Find(ctx context.Context, collection string, filter interface{
 	if err != nil {
 		return err
 	}
+	defer cursor.Close(ctx)
+
 	if err = cursor.All(ctx, documents); err != nil {
 		return err
 	}
@@ -82,6 +84,7 @@ func (mc *MgoCli) FindPages(ctx context.Context, collection string, filter inter
 	if err != nil {
 		return err
 	}
+	defer cursor.Close(ctx)
 
 	if err = cursor.All(ctx, documents); err != nil {
 		return err
@@ -230,4 +233,16 @@ func (mc *MgoCli) Transaction(ctx context.Context, fn func(ctx context.Context) 
 	_, err = session.WithTransaction(ctx, fn, txnOptions)
 
 	return err
+}
+
+func (mc *MgoCli) UpdateWithBuilder(ctx context.Context, builder *UpdateBuilder) error {
+	opt := builder.Build()
+	rlt, err := mc.Updates(ctx, opt.collection, opt.filter, opt.update)
+	if err != nil {
+		return err
+	}
+	if rlt.ModifiedCount == 0 {
+		return errors.New("no document updated")
+	}
+	return nil
 }

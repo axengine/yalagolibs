@@ -158,3 +158,13 @@ func TestTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUpdateWithBuilder(t *testing.T) {
+	id, _ := bson.ObjectIDFromHex("67caa038ce7faa11f1f8421d")
+	err := _mgocli_.UpdateWithBuilder(context.Background(), NewUpdateBuilder(_testCollection_).
+		Filter("_id", id).Filter("uid", 2).
+		Set("uid", 1).Set("name", "李四"))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
