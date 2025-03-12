@@ -343,6 +343,45 @@ func (c *Cubist) EIP712Sign(ctx context.Context, pubkey string, chainId *big.Int
 	return signature.Signature, nil
 }
 
+func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, txData interface{}, headers map[string]string) (string, error) {
+	session, err := c.loadSignerSession()
+	if err != nil {
+		return "", err
+	}
+
+	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
+	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
+	for k, v := range headers {
+		r.SetHeader(k, v)
+	}
+
+	ro := struct {
+		ChainId int64       `json:"chain_id"`
+		Tx      interface{} `json:"tx"`
+	}{
+		chainId.Int64(), txData,
+	}
+	bz, _ := json.MarshalIndent(&ro, "", "  ")
+	fmt.Println(string(bz))
+
+	uri := fmt.Sprintf("/v1/org/%s/eth1/sign/%s", session.OrgID, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	rsp, err := r.SetBody(ro).SetHeader("Content-Type", "application/json").Post(uri)
+	if err != nil {
+		return "", err
+	}
+	if rsp.StatusCode() != 200 {
+		return "", fmt.Errorf("eth1 sign error,status:%s message:%s", rsp.Status(), rsp.String())
+	}
+	var retult = struct {
+		RLPSignedTx string `json:"rlp_signed_tx"`
+	}{}
+	if err := json.Unmarshal(rsp.Body(), &retult); err != nil {
+		return "", err
+	}
+	return retult.RLPSignedTx, nil
+}
+
 func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 	session, err := c.loadManagementSession()
 	if err != nil {
@@ -356,7 +395,7 @@ func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 
 	ro := make(map[string]interface{})
 	ro["purpose"] = "auto sign"
-	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip191", "sign:evm:eip712"}
+	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712"}
 	if c.debug {
 		ro["auth_lifetime"] = 300         // 5mins
 		ro["refresh_lifetime"] = 86400    // 1day

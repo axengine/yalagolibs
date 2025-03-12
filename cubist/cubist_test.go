@@ -7,19 +7,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/yalaorg/golibs/bitcoin"
 	"math/big"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/axengine/utils"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-
-	"github.com/axengine/utils"
-	"github.com/btcsuite/btcd/btcutil/psbt"
+	bitcoinlib "github.com/yalaorg/golibs/bitcoin"
 )
 
 var _cli_ *Cubist
@@ -293,4 +294,65 @@ func TestCubist_PsbtSignMultisigTx(t *testing.T) {
 	}
 
 	fmt.Println("txid:", txid)
+}
+
+func TestCubist_Eth1Sign(t *testing.T) {
+	cli, err := ethclient.DialContext(context.Background(), "https://eth-sepolia.g.alchemy.com/v2/y8ILoqRkHr70iYwBIDLf0JMREp-5fHlI")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	number, err := cli.BlockNumber(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, err := cli.BlockByNumber(context.Background(), big.NewInt(int64(number)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFee := block.BaseFee()
+	fmt.Println("baseFee", baseFee)
+	tipFee, err := cli.SuggestGasTipCap(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	signer := "0x883f5d721c4653c37d64e4d7a301e90810cdab82"
+	chainId := big.NewInt(11155111)
+
+	nonce, err := cli.NonceAt(context.Background(), common.HexToAddress(signer), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rsp, err := _cli_.Eth1Sign(context.Background(), signer,
+		chainId,
+		TransactionV2{
+			ChainID:              hexutil.EncodeBig(chainId),
+			From:                 "0x883f5d721c4653c37d64e4d7a301e90810cdab82",
+			Gas:                  hexutil.EncodeBig(big.NewInt(21000)),
+			MaxFeePerGas:         hexutil.EncodeBig(new(big.Int).Add(baseFee, tipFee)),
+			MaxPriorityFeePerGas: hexutil.EncodeBig(tipFee),
+			Nonce:                hexutil.EncodeBig(big.NewInt(int64(nonce))),
+			To:                   "0x800F9c6fbcD0F7C78dA3AA58C83cCc6356C5Cf8f",
+			Type:                 "0x02",
+			Value:                hexutil.EncodeBig(big.NewInt(100000000000000)),
+			Data:                 "",
+			AccessList:           nil,
+		},
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(utils.JsonPretty(rsp))
+
+	var tx = types.Transaction{}
+	if err := tx.UnmarshalBinary(hexutil.MustDecode(rsp)); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(tx.Hash().Hex())
+	if err := cli.SendTransaction(context.TODO(), &tx); err != nil {
+		t.Fatal(err)
+	}
 }
