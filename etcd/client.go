@@ -3,9 +3,10 @@ package etcd
 import (
 	"crypto/tls"
 	"crypto/x509"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"os"
 	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func NewClient(cacertFile, certFile, keyFile string, username, password string, endpoints []string) (*clientv3.Client, error) {
@@ -26,7 +27,7 @@ func NewClient(cacertFile, certFile, keyFile string, username, password string, 
 			return nil, err
 		}
 
-		// 创建证书池并添加 CA 证书
+		// Create a certificate pool and add CA certificates
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 
@@ -34,7 +35,7 @@ func NewClient(cacertFile, certFile, keyFile string, username, password string, 
 		if err != nil {
 			return nil, err
 		}
-		// 创建 TLS 配置
+		// Create a TLS configuration
 		tlsConfig = &tls.Config{
 			RootCAs: caCertPool,
 			Certificates: []tls.Certificate{
