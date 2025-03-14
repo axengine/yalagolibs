@@ -62,7 +62,7 @@ func configDir() string {
 
 var _CONFIG_DIR = configDir()
 var _MANAGEMENT_SESSION_PATH = filepath.Join(_CONFIG_DIR, "management-session.json")
-var _SIGNER_SESSION_PATH = filepath.Join(_CONFIG_DIR, "signer-session-0.json")
+var _SIGNER_SESSION_PATH = filepath.Join(_CONFIG_DIR, "signer-session.json")
 
 func loadManagementSession() (*Session, error) {
 	bz, err := os.ReadFile(_MANAGEMENT_SESSION_PATH)
