@@ -4,17 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 )
 
 const Tips = `
-1、check signer-session-0.json exist?
+1、check signer-session.json exist?
 2、if not,please login with command 'cs'
-3、check signer-session-0.json expired，if expired,delete it
+3、check signer-session.json expired，if expired,delete it
 4、check the key has sign scope sign:bitcoin:psbt or sign:evm:eip191
 `
 
@@ -31,6 +34,24 @@ func New(debug bool) *Cubist {
 func (c *Cubist) Init() error {
 	_, err := c.loadSignerSession()
 	return err
+}
+
+func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.Duration) {
+	defer wg.Done()
+	tk := time.NewTicker(interval)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("cubist refresh session coroutine exit")
+			return
+		case <-tk.C:
+			if err := c.Init(); err != nil {
+				log.Println("cubist init error", zap.Error(err))
+				continue
+			}
+			log.Println("cubist refresh session success")
+		}
+	}
 }
 
 func (c *Cubist) loadManagementSession() (*Session, error) {
@@ -395,9 +416,9 @@ func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 
 	ro := make(map[string]interface{})
 	ro["purpose"] = "auto sign"
-	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712"}
+	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712", "sign:evm:tx"}
 	if c.debug {
-		ro["auth_lifetime"] = 300         // 5mins
+		ro["auth_lifetime"] = 3000        // 5mins
 		ro["refresh_lifetime"] = 86400    // 1day
 		ro["session_lifetime"] = 31536000 // 1year
 		ro["grace_lifetime"] = 30         // 30s
