@@ -418,15 +418,15 @@ func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 	ro["purpose"] = "auto sign"
 	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712", "sign:evm:tx"}
 	if c.debug {
-		ro["auth_lifetime"] = 3000        // 5mins
+		ro["auth_lifetime"] = 600         // 10mins
 		ro["refresh_lifetime"] = 86400    // 1day
 		ro["session_lifetime"] = 31536000 // 1year
 		ro["grace_lifetime"] = 30         // 30s
 	} else {
-		ro["auth_lifetime"] = 300       // 5mins
-		ro["refresh_lifetime"] = 86400  // 1day
-		ro["session_lifetime"] = 604800 // 7days
-		ro["grace_lifetime"] = 30       // 30s
+		ro["auth_lifetime"] = 300         // 5mins
+		ro["refresh_lifetime"] = 86400    // 1day
+		ro["session_lifetime"] = 31536000 // 1year
+		ro["grace_lifetime"] = 30         // 30s
 	}
 	rsp, err := r.SetBody(ro).SetHeader("Content-Type", "application/json").Post(uri)
 	if err != nil {
