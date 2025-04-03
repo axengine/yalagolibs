@@ -49,6 +49,12 @@ func (b *QueryBuilder) Sort(key string, ascending bool) *QueryBuilder {
 	return b
 }
 
+// SortE adds sort conditions using bson.E
+func (b *QueryBuilder) SortE(elements ...bson.E) *QueryBuilder {
+	b.opts.SetSort(bson.D(elements))
+	return b
+}
+
 // Page sets pagination parameters for the query
 func (b *QueryBuilder) Page(page, pageSize int64) *QueryBuilder {
 	if page < 1 {
