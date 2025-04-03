@@ -27,6 +27,18 @@ func (b *QueryBuilder) Filter(key string, value interface{}) *QueryBuilder {
 	return b
 }
 
+// FilterE adds a bson.E filter condition to the query
+func (b *QueryBuilder) FilterE(element bson.E) *QueryBuilder {
+	b.filter = append(b.filter, element)
+	return b
+}
+
+// FilterElements adds multiple bson.E filter conditions to the query
+func (b *QueryBuilder) FilterElements(elements []bson.E) *QueryBuilder {
+	b.filter = append(b.filter, elements...)
+	return b
+}
+
 // Sort adds a sort condition to the query
 func (b *QueryBuilder) Sort(key string, ascending bool) *QueryBuilder {
 	value := 1
