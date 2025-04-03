@@ -246,3 +246,17 @@ func (mc *MgoCli) UpdateWithBuilder(ctx context.Context, builder *UpdateBuilder)
 	}
 	return nil
 }
+
+func (c *MgoCli) FindWithBuilder(ctx context.Context, builder *QueryBuilder) (*mongo.Cursor, error) {
+	collection, filter, opts := builder.Build()
+	return c.client.Database(c.database).Collection(collection).Find(ctx, filter, opts)
+}
+
+func (c *MgoCli) FindWithBuilderV2(ctx context.Context, builder *QueryBuilder, result interface{}) error {
+	collection, filter, opts := builder.Build()
+	cursor, err := c.client.Database(c.database).Collection(collection).Find(ctx, filter, opts)
+	if err != nil {
+		return err
+	}
+	return cursor.All(ctx, result)
+}

@@ -168,3 +168,15 @@ func TestUpdateWithBuilder(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFindWithBuilder(t *testing.T) {
+	var users []user
+	err := _mgocli_.FindWithBuilderV2(context.Background(), NewQueryBuilder(_testCollection_).
+		Filter("name", "李四").
+		Page(1, 2).
+		Sort("uid", true), &users)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(users)
+}
