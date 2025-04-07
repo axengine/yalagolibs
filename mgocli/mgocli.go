@@ -260,3 +260,15 @@ func (c *MgoCli) FindWithBuilderV2(ctx context.Context, builder *QueryBuilder, r
 	}
 	return cursor.All(ctx, result)
 }
+
+func (c *MgoCli) FindOneWithBuilder(ctx context.Context, builder *QueryOneBuilder, result interface{}) (bool, error) {
+	collection, filter, opts := builder.Build()
+	err := c.client.Database(c.database).Collection(collection).FindOne(ctx, filter, opts).Decode(result)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
