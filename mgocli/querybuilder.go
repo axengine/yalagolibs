@@ -68,6 +68,16 @@ func (b *QueryBuilder) Page(page, pageSize int64) *QueryBuilder {
 	return b
 }
 
+func (b *QueryBuilder) Projection(fields bson.D) *QueryBuilder {
+	b.opts.SetProjection(fields)
+	return b
+}
+
+func (b *QueryBuilder) ProjectionE(elements ...bson.E) *QueryBuilder {
+	b.opts.SetProjection(bson.D(elements))
+	return b
+}
+
 // Build constructs and returns the query parameters
 func (b *QueryBuilder) Build() (string, bson.D, *options.FindOptionsBuilder) {
 	return b.collection, b.filter, b.opts
