@@ -382,8 +382,8 @@ func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, 
 	}{
 		chainId.Int64(), txData,
 	}
-	bz, _ := json.MarshalIndent(&ro, "", "  ")
-	fmt.Println(string(bz))
+	// bz, _ := json.MarshalIndent(&ro, "", "  ")
+	// fmt.Println(string(bz))
 
 	uri := fmt.Sprintf("/v1/org/%s/eth1/sign/%s", session.OrgID, pubkey)
 	uri = strings.Replace(uri, "#", "%23", -1)
