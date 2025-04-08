@@ -64,7 +64,10 @@ var _CONFIG_DIR = configDir()
 var _MANAGEMENT_SESSION_PATH = filepath.Join(_CONFIG_DIR, "management-session.json")
 var _SIGNER_SESSION_PATH = filepath.Join(_CONFIG_DIR, "signer-session.json")
 
-func loadManagementSession() (*Session, error) {
+func loadManagementSession(dir string) (*Session, error) {
+	if dir != "" {
+		_MANAGEMENT_SESSION_PATH = filepath.Join(dir, "management-session.json")
+	}
 	bz, err := os.ReadFile(_MANAGEMENT_SESSION_PATH)
 	if err != nil {
 		return nil, err
@@ -76,12 +79,18 @@ func loadManagementSession() (*Session, error) {
 	return &session, nil
 }
 
-func updateManagementSession(session *Session) error {
+func updateManagementSession(session *Session, dir string) error {
+	if dir != "" {
+		_MANAGEMENT_SESSION_PATH = filepath.Join(dir, "management-session.json")
+	}
 	bz, _ := json.Marshal(&session)
 	return os.WriteFile(_MANAGEMENT_SESSION_PATH, bz, 0755)
 }
 
-func loadSignerSession() (*Session, error) {
+func loadSignerSession(dir string) (*Session, error) {
+	if dir != "" {
+		_SIGNER_SESSION_PATH = filepath.Join(dir, "signer-session.json")
+	}
 	bz, err := os.ReadFile(_SIGNER_SESSION_PATH)
 	if err != nil {
 		return nil, err
@@ -93,7 +102,10 @@ func loadSignerSession() (*Session, error) {
 	return &session, nil
 }
 
-func updateSignerSession(session *Session) error {
+func updateSignerSession(session *Session, dir string) error {
+	if dir != "" {
+		_SIGNER_SESSION_PATH = filepath.Join(dir, "signer-session.json")
+	}
 	bz, _ := json.Marshal(&session)
 	return os.WriteFile(_SIGNER_SESSION_PATH, bz, 0755)
 }

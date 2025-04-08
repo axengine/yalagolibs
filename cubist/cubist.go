@@ -23,16 +23,17 @@ const Tips = `
 
 type Cubist struct {
 	debug bool
+	dir   string
 }
 
-func New(debug bool) *Cubist {
+func New(debug bool, dir string) *Cubist {
 	return &Cubist{
 		debug: debug,
 	}
 }
 
-func (c *Cubist) Init() error {
-	_, err := c.loadSignerSession()
+func (c *Cubist) Init(ctx context.Context) error {
+	_, err := c.loadSignerSession(ctx)
 	return err
 }
 
@@ -45,7 +46,7 @@ func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.
 			log.Println("cubist refresh session coroutine exit")
 			return
 		case <-tk.C:
-			if err := c.Init(); err != nil {
+			if err := c.Init(ctx); err != nil {
 				log.Println("cubist init error", zap.Error(err))
 				continue
 			}
@@ -55,7 +56,7 @@ func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.
 }
 
 func (c *Cubist) loadManagementSession() (*Session, error) {
-	session, err := loadManagementSession()
+	session, err := loadManagementSession(c.dir)
 	if err != nil {
 		return nil, err
 	}
@@ -63,21 +64,21 @@ func (c *Cubist) loadManagementSession() (*Session, error) {
 		if err := c.refreshToken(session); err != nil {
 			return nil, err
 		}
-		if err := updateManagementSession(session); err != nil {
+		if err := updateManagementSession(session, c.dir); err != nil {
 			return nil, err
 		}
 	}
 	return session, nil
 }
 
-func (c *Cubist) loadSignerSession() (*Session, error) {
-	session, err := loadSignerSession()
+func (c *Cubist) loadSignerSession(ctx context.Context) (*Session, error) {
+	session, err := loadSignerSession(c.dir)
 	if err != nil {
-		session, err = c.createSession(context.Background())
+		session, err = c.createSession(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if err := updateSignerSession(session); err != nil {
+		if err := updateSignerSession(session, c.dir); err != nil {
 			return nil, err
 		}
 	}
@@ -86,7 +87,7 @@ func (c *Cubist) loadSignerSession() (*Session, error) {
 		if err := c.refreshToken(session); err != nil {
 			return nil, err
 		}
-		if err := updateSignerSession(session); err != nil {
+		if err := updateSignerSession(session, c.dir); err != nil {
 			return nil, err
 		}
 	}
@@ -230,7 +231,7 @@ type SegwitSignRo struct {
 }
 
 func (c *Cubist) SegwitSign(ctx context.Context, pubkey string, ro *SegwitSignRo, headers map[string]string) (string, error) {
-	session, err := c.loadSignerSession()
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -261,7 +262,7 @@ func (c *Cubist) SegwitSign(ctx context.Context, pubkey string, ro *SegwitSignRo
 
 // PsbtSign signs the PSBT and appends the specified headers
 func (c *Cubist) PsbtSign(ctx context.Context, pubkey string, psbt string, headers map[string]string) (string, error) {
-	session, err := c.loadSignerSession()
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -294,7 +295,7 @@ func (c *Cubist) PsbtSign(ctx context.Context, pubkey string, psbt string, heade
 }
 
 func (c *Cubist) EIP191Sign(ctx context.Context, pubkey string, data string, headers map[string]string) (string, error) {
-	session, err := c.loadSignerSession()
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -326,7 +327,7 @@ func (c *Cubist) EIP191Sign(ctx context.Context, pubkey string, data string, hea
 }
 
 func (c *Cubist) EIP712Sign(ctx context.Context, pubkey string, chainId *big.Int, typedData *TypedData, headers map[string]string) (string, error) {
-	session, err := c.loadSignerSession()
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -365,7 +366,7 @@ func (c *Cubist) EIP712Sign(ctx context.Context, pubkey string, chainId *big.Int
 }
 
 func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, txData interface{}, headers map[string]string) (string, error) {
-	session, err := c.loadSignerSession()
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return "", err
 	}

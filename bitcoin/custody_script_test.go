@@ -267,7 +267,7 @@ func TestClaimFromScriptx(t *testing.T) {
 
 	utils.JsonPrettyToStdout(ro)
 
-	cu := cubist.New(true)
+	cu := cubist.New(true, "")
 	sig1, err := cu.SegwitSign(context.Background(), "tb1qnv34n2wcmd94leqqs3ycrwh93pa44adhexkj9l", &ro, nil)
 	if err != nil {
 		t.Fatal(err)

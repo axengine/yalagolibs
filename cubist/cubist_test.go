@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -26,7 +27,7 @@ import (
 var _cli_ *Cubist
 
 func TestMain(m *testing.M) {
-	_cli_ = New(true)
+	_cli_ = New(true, "")
 	os.Exit(m.Run())
 }
 
@@ -60,12 +61,58 @@ func TestCreateSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(utils.JsonPretty(rsp))
+
+	time.Sleep(time.Minute)
+	if err := _cli_.refreshToken(rsp); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(utils.JsonPretty(rsp))
+}
+
+func TestRefreshSession(t *testing.T) {
+	s := `{
+          "org_id": "Org#847b77bc-1cc0-4ad3-9b70-f991c3e8b699",
+          "role_id": "",
+          "expiration": 1774580623,
+          "purpose": "cs v0.85.0+fe242997",
+          "token": "3d6fd7397:MDhmYzU5YTktYTgwNC00MGFiLThjMWEtYmVjNmVkYTBhOWY2.eyJlcG9jaF9udW0iOjEsImVwb2NoX3Rva2VuIjoiOXpudVBBSnU5UGhQbU5udUtNdk0zdG9zWWVDWXZITXdZVGcycnFLamoyYz0iLCJvdGhlcl90b2tlbiI6InBYRk1xdk5iSFdjWlM3Mm8vd09ETTBlMGVCcWFZbGk2VXVhWW1QNXg3c009In0=",
+          "refresh_token": "3d6fd7397:MDhmYzU5YTktYTgwNC00MGFiLThjMWEtYmVjNmVkYTBhOWY2.eyJlcG9jaF9udW0iOjEsImVwb2NoX3Rva2VuIjoiOXpudVBBSnU5UGhQbU5udUtNdk0zdG9zWWVDWXZITXdZVGcycnFLamoyYz0iLCJvdGhlcl90b2tlbiI6InBYRk1xdk5iSFdjWlM3Mm8vd09ETTBlMGVCcWFZbGk2VXVhWW1QNXg3c009In0=.Tboc7pRzu52iKJC/0Tb8lwUmNUU4yy/59n4Vga9i8Ak=",
+          "env": {
+            "Dev-CubeSignerStack": {
+              "ClientId": "1tiou9ecj058khiidmhj4ds4rj",
+              "GoogleDeviceClientId": "59575607964-nc9hjnjka7jlb838jmg40qes4dtpsm6e.apps.googleusercontent.com",
+              "GoogleDeviceClientSecret": "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",
+              "Region": "us-east-1",
+              "UserPoolId": "us-east-1_RU7HEslOW",
+              "SignerApiRoot": "https://gamma.signer.cubist.dev",
+              "DefaultCredentialRpId": "cubist.dev",
+              "EncExportS3BucketName": null,
+              "DeletedKeysS3BucketName": null
+            }
+          },
+          "session_info": {
+            "auth_token": "pXFMqvNbHWcZS72o/wODM0e0eBqaYli6UuaYmP5x7sM=",
+            "auth_token_exp": 1743044946,
+            "epoch": 1,
+            "epoch_token": "9znuPAJu9PhPmNnuKMvM3tosYeCYvHMwYTg2rqKjj2c=",
+            "refresh_token": "Tboc7pRzu52iKJC/0Tb8lwUmNUU4yy/59n4Vga9i8Ak=",
+            "refresh_token_exp": 1743131046,
+            "session_id": "08fc59a9-a804-40ab-8c1a-bec6eda0a9f6"
+          }
+        }`
+
+	var session Session
+	json.Unmarshal([]byte(s), &session)
+	if err := _cli_.refreshToken(&session); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(utils.JsonPretty(session))
 }
 
 func TestCubist_PsbtSign(t *testing.T) {
 	rsp, err := _cli_.PsbtSign(context.Background(),
 		"tb1qtwdzg7zyrnvf2jhlatydsx68svqzswannlzyzw",
-		"70736274ff01005e020000000162cf792c5687a3f369a1b489efa62393d1897a2c16111c25f8d26c8670e221410000000000fdffffff01905f010000000000225120b9e42233471b8d58e9cb98fda7ae088f16ff6fe71733c061ce73ea96ec613cd6000000000001012ba08601000000000022002095a954ca6b8050d45510dda16d19698b599cc46d27626ac359c840a6ba4f7624010569522103ce80660233a78c36cf98e9957566d67406aa094daa5c1dfeee682a8334861da42102b7b38122d8507d907c53f0c60b099e9ecd94210fd5b4f6cf9cb9989c778a9674210287fd11b345a80b38a6ae5a8fbe4e31fbe344e83bb9ad120d7889b4f00587efd753ae0000",
+		"70736274ff01005e020000000162cf792c5687a311f369a1b489efa62393d1897a2c16111c25f8d26c8670e221410000000000fdffffff01905f010000000000225120b9e42233471b8d58e9cb98fda7ae088f16ff6fe71733c061ce73ea96ec613cd6000000000001012ba08601000000000022002095a954ca6b8050d45510dda16d19698b599cc46d27626ac359c840a6ba4f7624010569522103ce80660233a78c36cf98e9957566d67406aa094daa5c1dfeee682a8334861da42102b7b38122d8507d907c53f0c60b099e9ecd94210fd5b4f6cf9cb9989c778a9674210287fd11b345a80b38a6ae5a8fbe4e31fbe344e83bb9ad120d7889b4f00587efd753ae0000",
 		nil)
 	if err != nil {
 		t.Fatal(err)

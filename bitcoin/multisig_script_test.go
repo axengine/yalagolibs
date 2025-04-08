@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/yalaorg/golibs/cubist"
 	"testing"
+
+	"github.com/yalaorg/golibs/cubist"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
@@ -134,7 +135,7 @@ func TestClaimFromScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	unsignedPsbt := hex.EncodeToString(serializedTx.Bytes())
-	cu := cubist.New(true)
+	cu := cubist.New(true, "")
 	unsignedPsbt, err = cu.PsbtSign(context.Background(), "tb1qnv34n2wcmd94leqqs3ycrwh93pa44adhexkj9l", unsignedPsbt, nil)
 	if err != nil {
 		t.Fatal(err)

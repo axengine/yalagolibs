@@ -125,7 +125,7 @@ func TestGenTapMulsigTx2of3(t *testing.T) {
 	t.Log("before sign:", psbtHex)
 
 	// sign
-	cu := cubist.New(true)
+	cu := cubist.New(true, "")
 	signedPsbtHex, err := cu.PsbtSign(context.Background(), signpks[1], psbtHex, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -328,7 +328,7 @@ func TestGenTapMulsigTx3of5(t *testing.T) {
 	t.Log("before sign:", psbtHex)
 
 	// sign
-	cu := cubist.New(true)
+	cu := cubist.New(true, "")
 	signedPsbtHex, err := cu.PsbtSign(context.Background(), signpks[1], psbtHex, nil)
 	if err != nil {
 		t.Fatal(err)
