@@ -29,6 +29,7 @@ type Cubist struct {
 func New(debug bool, dir string) *Cubist {
 	return &Cubist{
 		debug: debug,
+		dir:   dir,
 	}
 }
 
