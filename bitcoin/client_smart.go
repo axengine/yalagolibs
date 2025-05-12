@@ -3,18 +3,22 @@ package bitcoinlib
 import (
 	"context"
 	"fmt"
-	"github.com/axengine/utils/log"
-	"github.com/go-resty/resty/v2"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"math"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/axengine/utils/log"
+	"github.com/go-resty/resty/v2"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 const ContentTypeJson = "application/json"
 const ContentTypeText = "text/plain"
+
+var defaultGetTimeout = time.Second * 3
 
 type SmartClient struct {
 	clients []*resty.Client
@@ -51,7 +55,8 @@ func (m *SmartClient) addError(baseURL string) {
 
 func (m *SmartClient) get(ctx context.Context, uri string, query, contentType string, result interface{}) (string, error) {
 	for _, cli := range m.clients {
-		r := cli.R().SetContext(ctx)
+		newCtx, cancel := context.WithTimeout(ctx, defaultGetTimeout)
+		r := cli.R().SetContext(newCtx)
 		if result != nil {
 			r.SetResult(result)
 		}
@@ -65,13 +70,16 @@ func (m *SmartClient) get(ctx context.Context, uri string, query, contentType st
 		if err != nil {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.Error(err))
+			cancel()
 			continue
 		}
 		if rsp.IsError() {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.String("status", rsp.Status()), zap.String("response", rsp.String()))
+			cancel()
 			continue
 		}
+		cancel()
 		return string(rsp.Body()), nil
 	}
 
@@ -133,23 +141,34 @@ func (m *SmartClient) BlockHash(ctx context.Context, height int64) (string, erro
 func (m *SmartClient) BlockTxs(ctx context.Context, blockHash string, index int) ([]Transaction, error) {
 	url := fmt.Sprintf("/block/%s/txs/%d", blockHash, index)
 	var txs []Transaction
-	for _, cli := range m.clients {
-		r := cli.R().SetContext(ctx)
+
+	fn := func(cli *resty.Client) ([]Transaction, error) {
+		newCtx, cancel := context.WithTimeout(ctx, defaultGetTimeout)
+		defer cancel()
+		r := cli.R().SetContext(newCtx)
 		r.SetResult(&txs)
 		rsp, err := r.Get(url)
 		if err != nil {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.Error(err))
-			continue
+			return nil, err
 		}
 		if rsp.IsError() && rsp.StatusCode() != 404 {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.String("status", rsp.Status()), zap.String("response", rsp.String()))
-			continue
+			return nil, err
 		}
 		// When index out of range
 		if rsp.StatusCode() == 404 {
 			return nil, nil
+		}
+		return txs, nil
+	}
+
+	for _, cli := range m.clients {
+		txs, err := fn(cli)
+		if err != nil {
+			continue
 		}
 		return txs, nil
 	}
@@ -247,23 +266,33 @@ func (m *SmartClient) GetFeeRate(ctx context.Context) (int64, error) {
 func (m *SmartClient) GetTransaction(ctx context.Context, txid string) (*Transaction, error) {
 	var tx = new(Transaction)
 
-	for _, cli := range m.clients {
-		r := cli.R().SetContext(ctx)
+	fn := func(cli *resty.Client) (*Transaction, error) {
+		newCtx, cancel := context.WithTimeout(ctx, defaultGetTimeout)
+		defer cancel()
+		r := cli.R().SetContext(newCtx)
 		r.SetResult(&tx)
 		rsp, err := r.Get("/tx/" + txid)
 		if err != nil {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.Error(err))
-			continue
+			return nil, err
 		}
 		if rsp.IsError() && rsp.StatusCode() != 404 {
 			m.addError(cli.BaseURL)
 			log.Logger.Debug("SmartClient:get", zap.String("baseURL", cli.BaseURL), zap.String("status", rsp.Status()), zap.String("response", rsp.String()))
-			continue
+			return nil, err
 		}
 		// When the txid does not exist, the server returns a 404
 		if rsp.StatusCode() == 404 {
 			return nil, nil
+		}
+		return tx, nil
+	}
+
+	for _, cli := range m.clients {
+		tx, err := fn(cli)
+		if err != nil {
+			continue
 		}
 		return tx, nil
 	}

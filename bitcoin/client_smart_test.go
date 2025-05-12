@@ -2,8 +2,9 @@ package bitcoinlib
 
 import (
 	"context"
-	"github.com/axengine/utils"
 	"testing"
+
+	"github.com/axengine/utils"
 )
 
 var multi_expporer_api = []string{"http://192.168.1.51:3001/"}
@@ -41,11 +42,11 @@ func TestSmartClient_GetAddress(t *testing.T) {
 }
 
 func TestSmartClient_GetTransaction(t *testing.T) {
-	tx, err := NewSmartClient(multi_expporer_api).GetTransaction(context.Background(), "e6cd51731c0b876eb32209d076d8242cc09ada0e23806944900d1e1c015d883c")
+	tx, err := NewSmartClient(multi_expporer_api).GetTransaction(context.Background(), "5a7bfd6c10e0ee2a16f96bcf68fe523a39d7ba57e69401dcb48ce22fef1d2461")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(tx)
+	t.Log(utils.JsonPretty(tx))
 }
 
 func TestSmartClient_GetAddressTransactions(t *testing.T) {
@@ -53,7 +54,7 @@ func TestSmartClient_GetAddressTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(tx)
+	t.Log(utils.JsonPretty(tx))
 }
 
 func TestSmartClient_GetAddressTransactionsMempool(t *testing.T) {
@@ -73,11 +74,11 @@ func TestSmartClient_GetAddressUtxos(t *testing.T) {
 }
 
 func TestSmartClient_GetTransactionOutspend(t *testing.T) {
-	rlt, err := NewSmartClient(multi_expporer_api).GetTransactionOutspend(context.Background(), "77a0f65725bc79a2f9d4bb40730991be95a744d629e15a43f36afebf3b2df0c1", 0)
+	rlt, err := NewSmartClient(multi_expporer_api).GetTransactionOutspend(context.Background(), "31cd71e4d796959cb243c41c1f1340859004781b105f229bc09223988438d3c4", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(rlt)
+	t.Log(utils.JsonPretty(rlt))
 }
 
 func TestSmartClient_PostTransaction(t *testing.T) {
