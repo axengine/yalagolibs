@@ -403,3 +403,16 @@ func TestCubist_Eth1Sign(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCubist_SolanaSign(t *testing.T) {
+	messageB64 := "gAEAAQMdt2FcaOPvKa5uIX8X7dxsjnDfbpK5azBJUAbT8yBoanlybaUtmdYLB+rXOy9vC/YIPMhcd6lONNaR14+Lyv7JAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC6Movkc30WVHA20gz0b8/waop8/0Nrue423h8mBB8lMAECAgABDAIAAABkAAAAAAAAAAA="
+	signer := "3111LEM8qzzeDW2maez6KuXZ49X9QTxhXBe4MKJAzXW9"
+	rsp, err := _cli_.SolanaSign(context.Background(), signer,
+		messageB64,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(rsp)
+}

@@ -405,6 +405,38 @@ func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, 
 	return retult.RLPSignedTx, nil
 }
 
+func (c *Cubist) SolanaSign(ctx context.Context, pubkey string, base64 string, headers map[string]string) (string, error) {
+	session, err := c.loadSignerSession(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
+
+	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
+	for k, v := range headers {
+		r.SetHeader(k, v)
+	}
+	uri := fmt.Sprintf("/v0/org/%s/solana/sign/%s", session.OrgID, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	rsp, err := r.SetBody(map[string]interface{}{
+		"message_base64": base64,
+	}).SetHeader("Content-Type", "application/json").Post(uri)
+	if err != nil {
+		return "", err
+	}
+	if rsp.StatusCode() != 200 {
+		return "", fmt.Errorf("psbt sign error,status:%s message:%s", rsp.Status(), rsp.String())
+	}
+	var data = struct {
+		Signature string `json:"signature"`
+	}{}
+	if err := json.Unmarshal(rsp.Body(), &data); err != nil {
+		return "", err
+	}
+	return data.Signature, nil
+}
+
 func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 	session, err := c.loadManagementSession()
 	if err != nil {
@@ -418,7 +450,7 @@ func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
 
 	ro := make(map[string]interface{})
 	ro["purpose"] = "auto sign"
-	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712", "sign:evm:tx"}
+	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712", "sign:evm:tx", "sign:solana"}
 	if c.debug {
 		ro["auth_lifetime"] = 600         // 10mins
 		ro["refresh_lifetime"] = 86400    // 1day
