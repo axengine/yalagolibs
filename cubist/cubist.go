@@ -426,7 +426,7 @@ func (c *Cubist) SolanaSign(ctx context.Context, pubkey string, base64 string, h
 		return "", err
 	}
 	if rsp.StatusCode() != 200 {
-		return "", fmt.Errorf("psbt sign error,status:%s message:%s", rsp.Status(), rsp.String())
+		return "", fmt.Errorf("solana sign error,status:%s message:%s", rsp.Status(), rsp.String())
 	}
 	var data = struct {
 		Signature string `json:"signature"`
