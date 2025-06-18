@@ -180,3 +180,15 @@ func TestFindWithBuilder(t *testing.T) {
 	}
 	t.Log(users)
 }
+
+func TestFindWithBuilderV2(t *testing.T) {
+	var users []user
+	err := _mgocli_.FindWithBuilderV2(context.Background(), NewQueryBuilder(_testCollection_).
+		Filter("uid", 1).
+		Page(1, 2).
+		Sort("uid", true), &users)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(users)
+}

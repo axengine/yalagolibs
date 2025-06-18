@@ -12,6 +12,7 @@ import (
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
@@ -326,6 +327,176 @@ func TestClaimFromScriptx(t *testing.T) {
 	if _, err := cli.PostTransaction(context.Background(), signedTx); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestClaimFromScripPSBT(t *testing.T) {
+	pk1 := "0x041813408b94aad6745f5710e887f3c705f9cce13e3c971f5e3347cfd06bbf64fb1594c4c25392a36284f26ec89e4bc490d3815562043de013795012a782c12125"     // tb1qnv34n2wcmd94leqqs3ycrwh93pa44adhexkj9l
+	pk2 := "0x04daae4253f0302725c22c9f124e6c0d182c5b4275047db181a567ff955aaebc19789155da6cd830ebc64e7ce13240c921b773681794f60e843d91d21b531584fb"     // tb1qvx32avcf6f6ke8s9h23pg7fr4d9798vs3xxrqr
+	pk3 := "0x040e1c9e63a03a4274998089d6491cd5ed789a7e09efbe7994a040228646e0e45d64def988296662eb5480ecab78dda694eda605bb9a56503533f02df3f5441202"     // tb1qpgw555fq567k098wtk6346ejt4q0jxhtxeyepc
+	pkAdmin := "0x043299eade0becea53c3e3943ccfbd647a103cf7654d8d7b79a11a6efeb81d8a31c396c7fa787f359608fe5b18debf4e8f242735f6049e880dd83480b403309a2a" // tb1qm39c3gupc2rfrrr6g8y8ely0ad26992lypcz5l
+	locktime := time.Date(2024, 12, 21, 9, 0, 0, 0, time.Local).Unix()
+
+	script, err := NewCustodyScript([]string{pk1, pk2, pk3}, pkAdmin, 2, 3, uint32(locktime), &chaincfg.TestNet3Params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(script.DisasmString())
+	t.Log(script.Address())
+	fmt.Println("address:", script.Address())
+
+	cli := NewSmartClient([]string{"https://mempool.space:443/testnet/api/"})
+	utxos, err := cli.GetAddressUtxos(context.Background(), script.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	redeemTx := wire.NewMsgTx(wire.TxVersion)
+	redeemTx.LockTime = uint32(script.locktime)
+
+	// outout
+	{
+		decodedAddr, err := btcutil.DecodeAddress("tb1qwszgf7yzj2ffqd303n6xmrpypdh4ax6n6sdmdnyf0hqrjdawl4mq79tg29",
+			Network("testnet3"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		destinationAddrByte, err := txscript.PayToAddrScript(decodedAddr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// adding the destination address and the amount to the transaction
+		redeemTxOut := wire.NewTxOut(9000, destinationAddrByte)
+		redeemTx.AddTxOut(redeemTxOut)
+
+	}
+
+	// input
+	var fetcherMap = make(map[wire.OutPoint]*wire.TxOut)
+
+	for _, utxo := range utxos {
+		if utxo.Value > 10000 {
+			continue
+		}
+		chainHash, _ := chainhash.NewHashFromStr(utxo.Txid)
+		prevOut := wire.NewOutPoint(chainHash, utxo.Vout)
+		in := wire.NewTxIn(prevOut, nil, nil)
+		in.Sequence = 0xfffffffd
+		redeemTx.AddTxIn(in)
+
+		// 为 PSBT 准备 UTXO 信息
+		fetcherMap[*prevOut] = wire.NewTxOut(utxo.Value, script.pk)
+	}
+
+	packet, err := psbt.NewFromUnsignedTx(redeemTx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 添加输入信息
+	for i, in := range redeemTx.TxIn {
+		utxo := fetcherMap[in.PreviousOutPoint]
+		packet.Inputs[i].WitnessScript = script.redeemScript
+		packet.Inputs[i].WitnessUtxo = utxo
+	}
+
+	var serializedTx bytes.Buffer
+	if err := packet.Serialize(&serializedTx); err != nil {
+		t.Fatal(err)
+	}
+	unsignedPsbt := hex.EncodeToString(serializedTx.Bytes())
+
+	cu := cubist.New(true, "")
+	unsignedPsbt, err = cu.PsbtSign(context.Background(), "tb1qnv34n2wcmd94leqqs3ycrwh93pa44adhexkj9l", unsignedPsbt, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsignedPsbt, err = cu.PsbtSign(context.Background(), "tb1qvx32avcf6f6ke8s9h23pg7fr4d9798vs3xxrqr", unsignedPsbt, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// admin
+	signedPsbtHex, err := cu.PsbtSign(context.Background(), "tb1qm39c3gupc2rfrrr6g8y8ely0ad26992lypcz5l", unsignedPsbt, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 完成 PSBT
+	signedPsbtBz, err := hex.DecodeString(signedPsbtHex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packet, err = psbt.NewFromRawBytes(bytes.NewReader(signedPsbtBz), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := finalizePSBTInput(packet, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err = psbt.MaybeFinalizeAll(packet); err != nil {
+		t.Fatal(err)
+	}
+
+	msgTx, err := psbt.Extract(packet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txid := msgTx.TxHash().String()
+	t.Log("txid=", txid)
+	var signedTxBuf bytes.Buffer
+	if err := msgTx.Serialize(&signedTxBuf); err != nil {
+		t.Fatal(err)
+	}
+	signedTx := hex.EncodeToString(signedTxBuf.Bytes())
+
+	if _, err := cli.PostTransaction(context.Background(), signedTx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func finalizePSBTInput(packet *psbt.Packet, index int) error {
+	// 获取签名
+	userSig := packet.Inputs[index].PartialSigs[0].Signature
+	notary1Sig := packet.Inputs[index].PartialSigs[1].Signature
+	notary2Sig := packet.Inputs[index].PartialSigs[2].Signature
+
+	// 构建见证数据
+	witness := wire.TxWitness{
+		userSig,
+		[]byte{}, // ELSE 分支选择
+		notary1Sig,
+		notary2Sig,
+		[]byte{},
+		packet.Inputs[index].WitnessScript,
+	}
+
+	// 设置见证数据
+	packet.Inputs[index].FinalScriptWitness = serializeWitness(witness)
+
+	// 清除不需要的字段
+	packet.Inputs[index].PartialSigs = nil
+	packet.Inputs[index].WitnessScript = nil
+
+	return nil
+}
+
+func serializeWitness(witness wire.TxWitness) []byte {
+	// 计算总长度
+	length := 1 // varint for number of witness items
+	for _, item := range witness {
+		length += wire.VarIntSerializeSize(uint64(len(item))) + len(item)
+	}
+
+	// 序列化
+	data := make([]byte, 0, length)
+	data = append(data, byte(len(witness))) // 见证数据数量
+
+	for _, item := range witness {
+		data = append(data, byte(len(item))) // 每个见证数据的长度
+		data = append(data, item...)         // 见证数据
+	}
+
+	return data
 }
 
 // https://mempool.space/zh/testnet/tx/c985e52360cbb27085c7a8c7367c6c64376dcde5ce06024c2b908e835894555d

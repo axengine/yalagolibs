@@ -54,7 +54,8 @@ func TestClaimFromScript(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(script.Address())
+	fmt.Println(script.Address())
+	fmt.Println(hex.EncodeToString(script.RedeemScript()))
 
 	cli := NewSmartClient([]string{"https://mempool.space:443/testnet/api/", "https://blockstream.info/testnet/api/"})
 	utxos, err := cli.GetAddressUtxos(context.Background(), script.Address())
