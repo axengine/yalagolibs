@@ -22,8 +22,10 @@ const Tips = `
 `
 
 type Cubist struct {
-	debug bool
-	dir   string
+	debug     bool
+	dir       string
+	signerMu  sync.Mutex
+	managerMu sync.Mutex
 }
 
 func New(debug bool, dir string) *Cubist {
@@ -57,6 +59,8 @@ func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.
 }
 
 func (c *Cubist) loadManagementSession() (*Session, error) {
+	c.managerMu.Lock()
+	defer c.managerMu.Unlock()
 	session, err := loadManagementSession(c.dir)
 	if err != nil {
 		return nil, err
@@ -73,6 +77,8 @@ func (c *Cubist) loadManagementSession() (*Session, error) {
 }
 
 func (c *Cubist) loadSignerSession(ctx context.Context) (*Session, error) {
+	c.signerMu.Lock()
+	defer c.signerMu.Unlock()
 	session, err := loadSignerSession(c.dir)
 	if err != nil {
 		session, err = c.createSession(ctx)
