@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"fmt"
-	"math/big"
 	"sort"
 	"strings"
 	"testing"
@@ -19,12 +17,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 )
-
-func TestIsOdd(t *testing.T) {
-	bz, _ := hex.DecodeString("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")
-	value := new(big.Int).SetBytes(bz)
-	fmt.Println(new(big.Int).Mod(value, big.NewInt(2)))
-}
 
 func TestGenTapMulsigTx2of3(t *testing.T) {
 	signpks := []string{

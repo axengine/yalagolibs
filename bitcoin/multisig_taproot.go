@@ -72,9 +72,8 @@ func NewMultisigTaprootScript(pks []string, m, n int, network *chaincfg.Params) 
 
 	// internalPubkey is a non-expendable public key whose private key no one knows and is the value recommended by the relevant standards
 	// Reference: bitcoinjs-lib/test/integration/taproot.spec.ts:761
-	// The prefix 02 has been added here to indicate that it is not a pk of XOnly
-	var internalPubkeyBz, _ = hex.DecodeString("0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0") // unspendableInternalKey
-	internalPubkey, err := btcec.ParsePubKey(internalPubkeyBz)
+	var schnorrPkBz, _ = hex.DecodeString("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")
+	unspendableInternalKey, err := SchnorrPk2SECPPk(schnorrPkBz)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func NewMultisigTaprootScript(pks []string, m, n int, network *chaincfg.Params) 
 	})
 	tapleafHash := scriptTree.RootNode.TapHash()
 	// Public
-	taprootOutputKey := txscript.ComputeTaprootOutputKey(internalPubkey, tapleafHash.CloneBytes())
+	taprootOutputKey := txscript.ComputeTaprootOutputKey(unspendableInternalKey, tapleafHash.CloneBytes())
 
 	// address
 	witnessProg := schnorr.SerializePubKey(taprootOutputKey)
@@ -107,7 +106,7 @@ func NewMultisigTaprootScript(pks []string, m, n int, network *chaincfg.Params) 
 	// Generate control blocks
 	controlBlock := txscript.ControlBlock{
 		LeafVersion:     txscript.BaseLeafVersion,
-		InternalKey:     internalPubkey,
+		InternalKey:     unspendableInternalKey,
 		OutputKeyYIsOdd: yIsOdd,
 	}
 	controlBlockBytes, err := controlBlock.ToBytes()
