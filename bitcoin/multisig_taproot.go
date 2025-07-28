@@ -92,7 +92,7 @@ func NewMultisigTaprootScript(pks []string, m, n int, network *chaincfg.Params) 
 	witnessProg := schnorr.SerializePubKey(taprootOutputKey)
 	tapAddr, err := btcutil.NewAddressTaproot(witnessProg, network)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Output scripts
