@@ -1,9 +1,10 @@
 package etcd
 
 import (
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"os"
 	"testing"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 var _cli_ *clientv3.Client
@@ -24,7 +25,7 @@ func TestNewClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 可以不是tls和密码
+	// You can not set tls and passwords
 	_, err = NewClient("", "", "", "", "", []string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatal(err)
