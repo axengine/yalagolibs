@@ -252,6 +252,11 @@ func (c *MgoCli) FindWithBuilder(ctx context.Context, builder *QueryBuilder) (*m
 	return c.client.Database(c.database).Collection(collection).Find(ctx, filter, opts)
 }
 
+func (c *MgoCli) CountWithBuilder(ctx context.Context, builder *QueryBuilder) (int64, error) {
+	collection, filter, _ := builder.Build()
+	return c.client.Database(c.database).Collection(collection).CountDocuments(ctx, filter)
+}
+
 func (c *MgoCli) FindWithBuilderV2(ctx context.Context, builder *QueryBuilder, result interface{}) error {
 	collection, filter, opts := builder.Build()
 	cursor, err := c.client.Database(c.database).Collection(collection).Find(ctx, filter, opts)
