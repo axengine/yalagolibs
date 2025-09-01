@@ -1,7 +1,9 @@
 package safewallet
 
 import (
+	"encoding/hex"
 	"fmt"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -192,4 +194,97 @@ func ExampleExecTransactionWithSignature() {
 
 	// Output:
 	// execTransaction call data: 0x...
+}
+
+// ExampleGetNonce demonstrates how to use GetNonceData and ParseNonceResult functions
+func ExampleGetNonce() {
+	// Generate contract call data for nonce query
+	data, err := GetNonceData()
+	if err != nil {
+		log.Fatalf("Failed to generate nonce call data: %v", err)
+	}
+
+	// Print the generated call data in hex format
+	fmt.Printf("Nonce query call data: 0x%s\n", hex.EncodeToString(data))
+
+	// In a real application, you would send this data to the contract and parse the result
+	// Example of how to use the result:
+	// Assuming you've received the result bytes from the contract call
+	mockResult, _ := hex.DecodeString("000000000000000000000000000000000000000000000000000000000000002a")
+	nonce, err := ParseNonceResult(mockResult)
+	if err != nil {
+		log.Fatalf("Failed to parse nonce result: %v", err)
+	}
+	fmt.Printf("Parsed nonce: %s\n", nonce.String()) // Should print "42"
+}
+
+// ExampleUseNonce shows how to use the nonce value in a transaction
+func ExampleUseNonce() {
+	// In a real application, you would get the nonce from the contract
+	nonce := big.NewInt(42)
+
+	// Use the nonce for transaction preparation
+	// For example, when preparing a Safe transaction:
+	fmt.Printf("Using nonce %s for the next transaction\n", nonce.String())
+
+	// The nonce would typically be used in transaction parameters
+	// or included in transaction data for contract interactions
+}
+
+// ExampleExecTransaction demonstrates how to use ExecTransactionData and ParseExecTransactionResult functions
+func ExampleExecTransaction() {
+	// Example parameters for a Safe transaction
+	to := common.HexToAddress("0x1234567890123456789012345678901234567890") // Destination address
+	value := big.NewInt(1000000000000000000)                                // 1 ETH
+
+	// Example transaction data (e.g., ERC20 transfer)
+	txData, _ := hex.DecodeString("a9059cbb000000000000000000000000abcdef0123456789abcdef0123456789abcdef010000000000000000000000000000000000000000000000000de0b6b3a7640000")
+
+	operation := uint8(0) // Call operation (0 = call, 1 = delegatecall)
+	safeTxGas := big.NewInt(21000)
+	baseGas := big.NewInt(10000)
+	gasPrice := big.NewInt(1000000000)                                                  // 1 Gwei
+	gasToken := common.HexToAddress("0x0000000000000000000000000000000000000000")       // ETH (zero address)
+	refundReceiver := common.HexToAddress("0x0000000000000000000000000000000000000000") // No refund (zero address)
+
+	// In a real application, signatures would be collected from owners
+	// This is just a placeholder example signature
+	signatures := []byte{}
+	// Example: append multiple signatures in format {bytes32 r}{bytes32 s}{uint8 v}
+	signatures = append(signatures, make([]byte, 65)...) // Placeholder for a 65-byte signature
+
+	// Generate contract call data
+	execData, err := ExecTransactionData(
+		to,
+		value,
+		txData,
+		operation,
+		safeTxGas,
+		baseGas,
+		gasPrice,
+		gasToken,
+		refundReceiver,
+		signatures,
+	)
+	if err != nil {
+		log.Fatalf("Failed to generate execTransaction call data: %v", err)
+	}
+
+	// Print the generated call data in hex format
+	fmt.Printf("ExecTransaction call data: 0x%s\n", hex.EncodeToString(execData))
+
+	// In a real application, you would send this data to the contract and parse the result
+	// Example of how to use the result:
+	// Assuming you've received the result bytes from the contract call
+	mockResult, _ := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000001")
+	success, err := ParseExecTransactionResult(mockResult)
+	if err != nil {
+		log.Fatalf("Failed to parse execTransaction result: %v", err)
+	}
+
+	if success {
+		fmt.Println("Transaction executed successfully")
+	} else {
+		fmt.Println("Transaction execution failed")
+	}
 }

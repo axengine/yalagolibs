@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/yalaorg/golibs/cubist"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -29,6 +28,7 @@ func CalcSafeAddress(
 	accounts []common.Address,
 	threshold *big.Int,
 	nonce *big.Int,
+	paymentReceiver common.Address,
 ) (common.Address, error) {
 	setupToL2ABIJson := `[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"singleton","type":"address"}],"name":"ChangedMasterCopy","type":"event"},{"inputs":[{"internalType":"address","name":"l2Singleton","type":"address"}],"name":"setupToL2","outputs":[],"stateMutability":"nonpayable","type":"function"}]`
 	setupToL2ABI, _ := abi.JSON(strings.NewReader(setupToL2ABIJson))
@@ -45,7 +45,7 @@ func CalcSafeAddress(
 		compatibilityFallbackHandler,
 		common.Address{},
 		big.NewInt(0),
-		common.HexToAddress("0x5afe7A11E7000000000000000000000000000000"),
+		paymentReceiver,
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -103,61 +103,6 @@ func keccak256(data []byte) []byte {
 	hash := sha3.NewLegacyKeccak256() // Ethereum uses Keccak256
 	hash.Write(data)
 	return hash.Sum(nil)
-}
-
-var SafeTypedData = cubist.Types{
-	"EIP712Domain": {
-		{
-			Name: "chainId",
-			Type: "uint256",
-		},
-		{
-			Name: "verifyingContract",
-			Type: "address",
-		},
-	},
-	"SafeTx": {
-		{
-			Name: "to",
-			Type: "address",
-		},
-		{
-			Name: "value",
-			Type: "uint256",
-		},
-		{
-			Name: "data",
-			Type: "bytes",
-		},
-		{
-			Name: "operation",
-			Type: "uint8",
-		},
-		{
-			Name: "safeTxGas",
-			Type: "uint256",
-		},
-		{
-			Name: "baseGas",
-			Type: "uint256",
-		},
-		{
-			Name: "gasPrice",
-			Type: "uint256",
-		},
-		{
-			Name: "gasToken",
-			Type: "address",
-		},
-		{
-			Name: "refundReceiver",
-			Type: "address",
-		},
-		{
-			Name: "nonce",
-			Type: "uint256",
-		},
-	},
 }
 
 // GetNonceData generates contract call data for nonce function
