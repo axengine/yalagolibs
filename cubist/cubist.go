@@ -2,7 +2,9 @@ package cubist
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -10,22 +12,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axengine/utils"
 	"github.com/go-resty/resty/v2"
-	"go.uber.org/zap"
 )
 
-const Tips = `
-1、check signer-session.json exist?
-2、if not,please login with command 'cs'
-3、check signer-session.json expired，if expired,delete it
-4、check the key has sign scope sign:bitcoin:psbt or sign:evm:eip191
-`
+const Tips = `make sure signer-session.json is in the dir`
 
 type Cubist struct {
-	debug     bool
-	dir       string
-	signerMu  sync.Mutex
-	managerMu sync.Mutex
+	debug    bool
+	dir      string
+	signerMu sync.Mutex
+	orgId    string
 }
 
 func New(debug bool, dir string) *Cubist {
@@ -36,7 +33,10 @@ func New(debug bool, dir string) *Cubist {
 }
 
 func (c *Cubist) Init(ctx context.Context) error {
-	_, err := c.loadSignerSession(ctx)
+	sess, err := c.loadSignerSession(ctx)
+	if sess != nil {
+		c.orgId = sess.OrgID
+	}
 	return err
 }
 
@@ -50,7 +50,7 @@ func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.
 			return
 		case <-tk.C:
 			if err := c.Init(ctx); err != nil {
-				log.Println("cubist init error", zap.Error(err))
+				log.Println("cubist init error", err)
 				continue
 			}
 			log.Println("cubist refresh session success")
@@ -58,40 +58,16 @@ func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.
 	}
 }
 
-func (c *Cubist) loadManagementSession() (*Session, error) {
-	c.managerMu.Lock()
-	defer c.managerMu.Unlock()
-	session, err := loadManagementSession(c.dir)
-	if err != nil {
-		return nil, err
-	}
-	if time.Now().Unix() > session.SessionInfo.AuthTokenExp {
-		if err := c.refreshToken(session); err != nil {
-			return nil, err
-		}
-		if err := updateManagementSession(session, c.dir); err != nil {
-			return nil, err
-		}
-	}
-	return session, nil
-}
-
 func (c *Cubist) loadSignerSession(ctx context.Context) (*Session, error) {
 	c.signerMu.Lock()
 	defer c.signerMu.Unlock()
 	session, err := loadSignerSession(c.dir)
 	if err != nil {
-		session, err = c.createSession(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if err := updateSignerSession(session, c.dir); err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	if time.Now().Unix() > session.SessionInfo.AuthTokenExp {
-		if err := c.refreshToken(session); err != nil {
+		if err := c.refreshToken(ctx, session); err != nil {
 			return nil, err
 		}
 		if err := updateSignerSession(session, c.dir); err != nil {
@@ -101,10 +77,10 @@ func (c *Cubist) loadSignerSession(ctx context.Context) (*Session, error) {
 	return session, nil
 }
 
-func (c *Cubist) refreshToken(session *Session) error {
+func (c *Cubist) refreshToken(ctx context.Context, session *Session) error {
 	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
 
-	r := cli.R().SetHeader("Authorization", session.Token)
+	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
 
 	ro := make(map[string]interface{})
 	ro["epoch_num"] = session.SessionInfo.Epoch
@@ -132,109 +108,99 @@ func (c *Cubist) refreshToken(session *Session) error {
 	return nil
 }
 
-func (c *Cubist) Me() (interface{}, error) {
-	session, err := c.loadManagementSession()
+func (c *Cubist) getMfa(ctx context.Context, mfaId string) (*MfaRequest, error) {
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
 
-	r := cli.R().SetHeader("Authorization", session.Token)
-	uri := fmt.Sprintf("/v0/org/%s/user/me", session.OrgID)
+	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
+	uri := fmt.Sprintf("/v0/org/%s/mfa/%s", session.OrgID, mfaId)
 	uri = strings.Replace(uri, "#", "%23", -1)
 	rsp, err := r.Get(uri)
 	if err != nil {
 		return nil, err
 	}
 	if rsp.StatusCode() != 200 {
-		return nil, fmt.Errorf("me error,status:%s message:%s", rsp.Status(), rsp.String())
+		return nil, fmt.Errorf("get mfa error,status:%s message:%s", rsp.Status(), rsp.String())
 	}
-	var me = make(map[string]interface{})
-	if err := json.Unmarshal(rsp.Body(), &me); err != nil {
-		return nil, err
-	}
-	return me, nil
-}
-
-func (c *Cubist) Org() (interface{}, error) {
-	session, err := c.loadManagementSession()
-	if err != nil {
-		return nil, err
-	}
-	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
-
-	r := cli.R().SetHeader("Authorization", session.Token)
-	uri := fmt.Sprintf("/v0/org/%s", session.OrgID)
-	uri = strings.Replace(uri, "#", "%23", -1)
-	rsp, err := r.Get(uri)
-	if err != nil {
-		return nil, err
-	}
-	if rsp.StatusCode() != 200 {
-		return nil, fmt.Errorf("org error,status:%s message:%s", rsp.Status(), rsp.String())
-	}
-	var data = make(map[string]interface{})
+	var data = MfaRequest{}
 	if err := json.Unmarshal(rsp.Body(), &data); err != nil {
 		return nil, err
 	}
-	return data, nil
+	return &data, nil
 }
 
-func (c *Cubist) Keys() (interface{}, error) {
-	session, err := c.loadManagementSession()
+func (c *Cubist) signAny(ctx context.Context, uri string, ro any, headers map[string]string) (*SignResponse, error) {
+	session, err := c.loadSignerSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
 
-	r := cli.R().SetHeader("Authorization", session.Token)
-	uri := fmt.Sprintf("/v0/org/%s/keys", session.OrgID)
-	uri = strings.Replace(uri, "#", "%23", -1)
-	rsp, err := r.Get(uri)
+	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
+	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
+	for k, v := range headers {
+		r.SetHeader(k, v)
+	}
+	rsp, err := r.SetBody(ro).SetHeader("Content-Type", "application/json").Post(uri)
 	if err != nil {
 		return nil, err
+	}
+	if rsp.StatusCode() == 202 { //MFA required
+		var data = MFARequiredResponse{}
+		if err := json.Unmarshal(rsp.Body(), &data); err != nil {
+			return nil, err
+		}
+		tk := time.NewTimer(time.Second * 5)
+		tm := time.NewTimer(time.Minute * 5) // max 5mins wait to approved
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, errors.New("timeout to cancel")
+			case <-tk.C:
+				mfaRequest, err := c.getMfa(ctx, data.Accepted.MfaRequired.ID)
+				if err != nil {
+					return nil, err
+				}
+				log.Println("got mfa:", utils.JsonPretty(mfaRequest))
+				if mfaRequest.Receipt != nil {
+					receipt := make(map[string]interface{})
+					receipt["id"] = data.Accepted.MfaRequired.ID
+					receipt["confirmation"] = mfaRequest.Receipt.Confirmation
+
+					var receipts []map[string]interface{}
+					receipts = append(receipts, receipt)
+					bz, _ := json.Marshal(receipts)
+					headers = make(map[string]string)
+					headers["x-cubist-mfa-org-id"] = data.Accepted.MfaRequired.OrgID
+					headers["x-cubist-mfa-receipts"] = encodeToBase64Url(bz)
+					return c.signAny(ctx, uri, ro, headers)
+				}
+				tk.Reset(time.Second * 5)
+			case <-tm.C:
+				return nil, errors.New("timeout to wait approved")
+			}
+		}
 	}
 	if rsp.StatusCode() != 200 {
-		return nil, fmt.Errorf("keys error,status:%s message:%s", rsp.Status(), rsp.String())
+		return nil, fmt.Errorf("sign error,status:%s message:%s", rsp.Status(), rsp.String())
 	}
-	var data = make(map[string]interface{})
-	if err := json.Unmarshal(rsp.Body(), &data); err != nil {
+	var rlt SignResponse
+	if err := json.Unmarshal(rsp.Body(), &rlt); err != nil {
 		return nil, err
 	}
-	return data, nil
+	return &rlt, nil
 }
 
-type Segwit struct {
-	InputIndex  int    `json:"input_index"`
-	ScriptCode  string `json:"script_code"`
-	SighashType string `json:"sighash_type"`
-	Value       int64  `json:"value"`
-}
-type SigKind struct {
-	Segwit Segwit `json:"Segwit"`
-}
-
-type Input struct {
-	PreviousOutput string   `json:"previous_output"`
-	ScriptSig      string   `json:"script_sig"`
-	Sequence       uint32   `json:"sequence"`
-	Witness        []string `json:"witness"`
-}
-
-type Output struct {
-	ScriptPubkey string `json:"script_pubkey"`
-	Value        int64  `json:"value"`
-}
-
-type BitcoinTx struct {
-	Version  int32    `json:"version"`
-	Locktime uint32   `json:"lock_time"`
-	Input    []Input  `json:"input"`
-	Output   []Output `json:"output"`
-}
-type SegwitSignRo struct {
-	SigKind SigKind   `json:"sig_kind"`
-	Tx      BitcoinTx `json:"tx"`
+func (c *Cubist) SegwitSignV0(ctx context.Context, pubkey string, ro *SegwitSignRo) (string, error) {
+	uri := fmt.Sprintf("/v0/org/%s/btc/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Signature, nil
 }
 
 func (c *Cubist) SegwitSign(ctx context.Context, pubkey string, ro *SegwitSignRo, headers map[string]string) (string, error) {
@@ -267,6 +233,20 @@ func (c *Cubist) SegwitSign(ctx context.Context, pubkey string, ro *SegwitSignRo
 	return data.Signature, nil
 }
 
+func (c *Cubist) PsbtSignV0(ctx context.Context, pubkey string, psbt string) (string, error) {
+	uri := fmt.Sprintf("/v0/org/%s/btc/psbt/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	ro := map[string]interface{}{
+		"psbt":             psbt,
+		"sign_all_scripts": true,
+	}
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Psbt, nil
+}
+
 // PsbtSign signs the PSBT and appends the specified headers
 func (c *Cubist) PsbtSign(ctx context.Context, pubkey string, psbt string, headers map[string]string) (string, error) {
 	session, err := c.loadSignerSession(ctx)
@@ -289,6 +269,9 @@ func (c *Cubist) PsbtSign(ctx context.Context, pubkey string, psbt string, heade
 	if err != nil {
 		return "", err
 	}
+	if rsp.StatusCode() == 202 {
+
+	}
 	if rsp.StatusCode() != 200 {
 		return "", fmt.Errorf("psbt sign error,status:%s message:%s", rsp.Status(), rsp.String())
 	}
@@ -299,6 +282,19 @@ func (c *Cubist) PsbtSign(ctx context.Context, pubkey string, psbt string, heade
 		return "", err
 	}
 	return data.Psbt, nil
+}
+
+func (c *Cubist) EIP191SignV0(ctx context.Context, pubkey string, data string) (string, error) {
+	uri := fmt.Sprintf("/v0/org/%s/evm/eip191/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	ro := map[string]interface{}{
+		"data": data,
+	}
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Signature, nil
 }
 
 func (c *Cubist) EIP191Sign(ctx context.Context, pubkey string, data string, headers map[string]string) (string, error) {
@@ -331,6 +327,22 @@ func (c *Cubist) EIP191Sign(ctx context.Context, pubkey string, data string, hea
 		return "", err
 	}
 	return signature.Signature, nil
+}
+
+func (c *Cubist) EIP712SignV0(ctx context.Context, pubkey string, chainId *big.Int, typedData *TypedData) (string, error) {
+	uri := fmt.Sprintf("/v0/org/%s/evm/eip712/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	ro := struct {
+		ChainId   int64      `json:"chain_id"`
+		TypedData *TypedData `json:"typed_data"`
+	}{
+		chainId.Int64(), typedData,
+	}
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Signature, nil
 }
 
 func (c *Cubist) EIP712Sign(ctx context.Context, pubkey string, chainId *big.Int, typedData *TypedData, headers map[string]string) (string, error) {
@@ -372,6 +384,22 @@ func (c *Cubist) EIP712Sign(ctx context.Context, pubkey string, chainId *big.Int
 	return signature.Signature, nil
 }
 
+func (c *Cubist) Eth1SignV0(ctx context.Context, pubkey string, chainId *big.Int, txData interface{}) (string, error) {
+	uri := fmt.Sprintf("/v1/org/%s/eth1/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	ro := struct {
+		ChainId int64       `json:"chain_id"`
+		Tx      interface{} `json:"tx"`
+	}{
+		chainId.Int64(), txData,
+	}
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Signature, nil
+}
+
 func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, txData interface{}, headers map[string]string) (string, error) {
 	session, err := c.loadSignerSession(ctx)
 	if err != nil {
@@ -411,6 +439,19 @@ func (c *Cubist) Eth1Sign(ctx context.Context, pubkey string, chainId *big.Int, 
 	return retult.RLPSignedTx, nil
 }
 
+func (c *Cubist) SolanaSignV0(ctx context.Context, pubkey string, base64 string) (string, error) {
+	uri := fmt.Sprintf("/v1/org/%s/solana/sign/%s", c.orgId, pubkey)
+	uri = strings.Replace(uri, "#", "%23", -1)
+	ro := map[string]interface{}{
+		"message_base64": base64,
+	}
+	rlt, err := c.signAny(ctx, uri, ro, nil)
+	if err != nil {
+		return "", err
+	}
+	return rlt.Signature, nil
+}
+
 func (c *Cubist) SolanaSign(ctx context.Context, pubkey string, base64 string, headers map[string]string) (string, error) {
 	session, err := c.loadSignerSession(ctx)
 	if err != nil {
@@ -443,46 +484,12 @@ func (c *Cubist) SolanaSign(ctx context.Context, pubkey string, base64 string, h
 	return data.Signature, nil
 }
 
-func (c *Cubist) createSession(ctx context.Context) (*Session, error) {
-	session, err := c.loadManagementSession()
-	if err != nil {
-		return nil, err
-	}
-	cli := resty.New().SetBaseURL(session.Env.DevCubeSignerStack.SignerApiRoot)
-
-	r := cli.R().SetContext(ctx).SetHeader("Authorization", session.Token)
-	uri := fmt.Sprintf("/v0/org/%s/session", session.OrgID)
-	uri = strings.Replace(uri, "#", "%23", -1)
-
-	ro := make(map[string]interface{})
-	ro["purpose"] = "auto sign"
-	ro["scopes"] = []string{"manage:key:get", "sign:btc:segwit", "sign:btc:psbt:*", "sign:evm:eip712", "sign:evm:tx", "sign:solana"}
-	if c.debug {
-		ro["auth_lifetime"] = 600         // 10mins
-		ro["refresh_lifetime"] = 86400    // 1day
-		ro["session_lifetime"] = 31536000 // 1year
-		ro["grace_lifetime"] = 30         // 30s
-	} else {
-		ro["auth_lifetime"] = 300         // 5mins
-		ro["refresh_lifetime"] = 86400    // 1day
-		ro["session_lifetime"] = 31536000 // 1year
-		ro["grace_lifetime"] = 30         // 30s
-	}
-	rsp, err := r.SetBody(ro).SetHeader("Content-Type", "application/json").Post(uri)
-	if err != nil {
-		return nil, err
-	}
-	if rsp.StatusCode() != 200 {
-		return nil, fmt.Errorf("create session error,status:%s message:%s", rsp.Status(), rsp.String())
-	}
-	var data Session
-	if err := json.Unmarshal(rsp.Body(), &data); err != nil {
-		return nil, err
-	}
-	data.OrgID = session.OrgID
-	data.RoleID = session.RoleID
-	data.Purpose = session.Purpose
-	data.Env = session.Env
-
-	return &data, nil
+func encodeToBase64Url(buffer []byte) string {
+	// Encode the buffer to standard Base64
+	b64 := base64.StdEncoding.EncodeToString(buffer)
+	// Replace URL-unsafe characters with URL-safe ones and remove padding
+	b64 = strings.ReplaceAll(b64, "+", "-")
+	b64 = strings.ReplaceAll(b64, "/", "_")
+	b64 = strings.TrimRight(b64, "=")
+	return b64
 }

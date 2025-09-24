@@ -3,15 +3,12 @@ package cubist
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -27,46 +24,12 @@ import (
 var _cli_ *Cubist
 
 func TestMain(m *testing.M) {
-	_cli_ = New(true, "")
+	_cli_ = New(true, "./")
+	sess, _ := _cli_.loadSignerSession(context.TODO())
+	if sess != nil {
+		_cli_.orgId = sess.OrgID
+	}
 	os.Exit(m.Run())
-}
-
-func TestMe(t *testing.T) {
-	rsp, err := _cli_.Me()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(utils.JsonPretty(rsp))
-}
-
-func TestOrg(t *testing.T) {
-	rsp, err := _cli_.Org()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(utils.JsonPretty(rsp))
-}
-
-func TestKeys(t *testing.T) {
-	rsp, err := _cli_.Keys()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(utils.JsonPretty(rsp))
-}
-
-func TestCreateSession(t *testing.T) {
-	rsp, err := _cli_.createSession(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(utils.JsonPretty(rsp))
-
-	time.Sleep(time.Minute)
-	if err := _cli_.refreshToken(rsp); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(utils.JsonPretty(rsp))
 }
 
 func TestRefreshSession(t *testing.T) {
@@ -103,7 +66,7 @@ func TestRefreshSession(t *testing.T) {
 
 	var session Session
 	json.Unmarshal([]byte(s), &session)
-	if err := _cli_.refreshToken(&session); err != nil {
+	if err := _cli_.refreshToken(context.TODO(), &session); err != nil {
 		t.Fatal(err)
 	}
 	t.Log(utils.JsonPretty(session))
@@ -112,7 +75,7 @@ func TestRefreshSession(t *testing.T) {
 func TestCubist_PsbtSign(t *testing.T) {
 	rsp, err := _cli_.PsbtSign(context.Background(),
 		"tb1qtwdzg7zyrnvf2jhlatydsx68svqzswannlzyzw",
-		"70736274ff01005e020000000162cf792c5687a311f369a1b489efa62393d1897a2c16111c25f8d26c8670e221410000000000fdffffff01905f010000000000225120b9e42233471b8d58e9cb98fda7ae088f16ff6fe71733c061ce73ea96ec613cd6000000000001012ba08601000000000022002095a954ca6b8050d45510dda16d19698b599cc46d27626ac359c840a6ba4f7624010569522103ce80660233a78c36cf98e9957566d67406aa094daa5c1dfeee682a8334861da42102b7b38122d8507d907c53f0c60b099e9ecd94210fd5b4f6cf9cb9989c778a9674210287fd11b345a80b38a6ae5a8fbe4e31fbe344e83bb9ad120d7889b4f00587efd753ae0000",
+		"70736274ff01005e020000000162cf792c5687a3f369a1b489efa62393d1897a2c16111c25f8d26c8670e221410000000000fdffffff01905f010000000000225120b9e42233471b8d58e9cb98fda7ae088f16ff6fe71733c061ce73ea96ec613cd6000000000001012ba08601000000000022002095a954ca6b8050d45510dda16d19698b599cc46d27626ac359c840a6ba4f7624010569522103ce80660233a78c36cf98e9957566d67406aa094daa5c1dfeee682a8334861da42102b7b38122d8507d907c53f0c60b099e9ecd94210fd5b4f6cf9cb9989c778a9674210287fd11b345a80b38a6ae5a8fbe4e31fbe344e83bb9ad120d7889b4f00587efd753ae0000",
 		nil)
 	if err != nil {
 		t.Fatal(err)
@@ -120,14 +83,24 @@ func TestCubist_PsbtSign(t *testing.T) {
 	t.Log(utils.JsonPretty(rsp))
 }
 
-func encodeToBase64Url(buffer []byte) string {
-	// Encode the buffer to standard Base64
-	b64 := base64.StdEncoding.EncodeToString(buffer)
-	// Replace URL-unsafe characters with URL-safe ones and remove padding
-	b64 = strings.ReplaceAll(b64, "+", "-")
-	b64 = strings.ReplaceAll(b64, "/", "_")
-	b64 = strings.TrimRight(b64, "=")
-	return b64
+func TestGetMfa(t *testing.T) {
+	mfaId := "MfaRequest#aee35025-b499-4039-ae8e-9e752f50134a"
+	rsp, err := _cli_.getMfa(context.Background(), mfaId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(utils.JsonPretty(rsp))
+}
+
+func TestCubist_PsbtSignV0(t *testing.T) {
+	rsp, err := _cli_.PsbtSignV0(context.Background(),
+		"tb1qtwdzg7zyrnvf2jhlatydsx68svqzswannlzyzw",
+		"70736274ff01005e020000000162cf792c5687a3f369a1b489efa62393d1897a2c16111c25f8d26c8670e221410000000000fdffffff01905f010000000000225120b9e42233471b8d58e9cb98fda7ae088f16ff6fe71733c061ce73ea96ec613cd6000000000001012ba08601000000000022002095a954ca6b8050d45510dda16d19698b599cc46d27626ac359c840a6ba4f7624010569522103ce80660233a78c36cf98e9957566d67406aa094daa5c1dfeee682a8334861da42102b7b38122d8507d907c53f0c60b099e9ecd94210fd5b4f6cf9cb9989c778a9674210287fd11b345a80b38a6ae5a8fbe4e31fbe344e83bb9ad120d7889b4f00587efd753ae0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(utils.JsonPretty(rsp))
 }
 
 func TestCubist_PsbtSignWithMFA(t *testing.T) {
