@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axengine/yalagolibs/cubist"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/yalaorg/golibs/cubist"
 )
 
 func createCustodyV2Script() *CustodyScriptV2 {
