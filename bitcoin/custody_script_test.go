@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axengine/gogolibs/cubist"
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
@@ -19,7 +20,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/yalaorg/golibs/cubist"
 )
 
 func createScript() *CustodyScript {

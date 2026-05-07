@@ -1,4 +1,4 @@
-module github.com/yalaorg/golibs
+module github.com/axengine/gogolibs
 
 go 1.23.0
 

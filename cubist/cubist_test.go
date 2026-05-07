@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	bitcoinlib "github.com/axengine/gogolibs/bitcoin"
 	"github.com/axengine/utils"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	bitcoinlib "github.com/yalaorg/golibs/bitcoin"
 )
 
 var _cli_ *Cubist
