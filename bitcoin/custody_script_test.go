@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axengine/gogolibs/cubist"
 	"github.com/axengine/utils"
+	"github.com/axengine/yalagolibs/cubist"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"

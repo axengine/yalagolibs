@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	bitcoinlib "github.com/axengine/gogolibs/bitcoin"
 	"github.com/axengine/utils"
+	bitcoinlib "github.com/axengine/yalagolibs/bitcoin"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

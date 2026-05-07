@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/axengine/gogolibs/cubist"
+	"github.com/axengine/yalagolibs/cubist"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/axengine/gogolibs/cubist"
+	"github.com/axengine/yalagolibs/cubist"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"

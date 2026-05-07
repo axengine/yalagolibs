@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/axengine/gogolibs/shamir"
+	"github.com/axengine/yalagolibs/shamir"
 )
 
 func TestShamir(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	_ "crypto/rand"
 	"io"
 
-	"github.com/axengine/gogolibs/shamir"
 	"github.com/axengine/utils/crypto"
+	"github.com/axengine/yalagolibs/shamir"
 )
 
 var _shardEncryptKey_ = func() []byte {
