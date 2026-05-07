@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/axengine/utils/crypto"
-	"github.com/yalaorg/golibs/shamir"
+	"github.com/axengine/yalagolibs/shamir"
 )
 
 var _shardEncryptKey_ = func() []byte {
