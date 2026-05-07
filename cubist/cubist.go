@@ -40,7 +40,8 @@ func (c *Cubist) Init(ctx context.Context) error {
 	return err
 }
 
-func (c *Cubist) Refresh(ctx context.Context, interval time.Duration) {
+func (c *Cubist) Refresh(ctx context.Context, wg *sync.WaitGroup, interval time.Duration) {
+	defer wg.Done()
 	tk := time.NewTicker(interval)
 	for {
 		select {

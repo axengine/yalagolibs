@@ -2,8 +2,9 @@ package bitcoinlib
 
 import (
 	"context"
-	"github.com/axengine/utils"
 	"testing"
+
+	"github.com/axengine/utils"
 )
 
 const URL_MEMPOOL = "https://mempool.space:443/testnet/api/"
@@ -38,7 +39,7 @@ func TestGetFeeEstimates(t *testing.T) {
 }
 
 func TestGetTransaction(t *testing.T) {
-	rsp, err := NewMempool(URL_MEMPOOL).GetTransaction(context.Background(), "060ababdc23c14ec5d5dc606f790b9f594365f4ab5876684c5695b1d2af20e2d")
+	rsp, err := NewMempool(URL_MEMPOOL).GetTransaction(context.Background(), "add01057fac7a3755f384b437992fa05d1583b4432ddc42eab0e0311e24a661c")
 	if err != nil {
 		t.Fatal(err)
 	}
